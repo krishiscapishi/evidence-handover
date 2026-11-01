@@ -1,70 +1,64 @@
-# Relay — Evidence Handover
+# Relay - Evidence Handover
 
-An early Round 2 demo for turning project records into a source-linked handover that a reviewer can edit and approve before sharing it with the incoming teammate.
+Relay turns project notes and work records into an editable handover draft. Each item keeps a link to the source file and line range. A reviewer checks every item before the approved handover is shown to the incoming teammate.
+
+## Live project and source code
+
+- **Working project:** [evidence-handover.onrender.com](https://evidence-handover.onrender.com)
+- **Public source repository:** [github.com/krishiscapishi/evidence-handover](https://github.com/krishiscapishi/evidence-handover)
+
+## Try the demo
+
+1. Open the live project and choose **Explore the demo** to load the synthetic Atlas university pilot.
+2. Review the 10 draft items. Open each source citation to inspect the original record and line numbers.
+3. Edit, approve, or reject an item. Every item needs a review decision before sharing.
+4. Choose **Approve and share handover** to open the approved recipient view.
+
+The reviewer and recipient are demonstration views, not separate authenticated accounts. Use only the included synthetic sample or other records you are authorized to share.
+
+## Round 2 verification
+
+The deployed sample flow was checked in a browser on 2 November 2026: the sample loaded with 3 sources and 10 items, citations remained visible through review, all 10 items received a review decision, and the final recipient view showed the approved items with citations. A separate local API check verified synthetic file upload, citations, and saved edits. The live browser upload path and optional LLM request were not part of that smoke check.
+
+## Technology and data flow
+
+- **Frontend:** Vanilla HTML, CSS, and JavaScript.
+- **Backend:** Python standard-library HTTP server and JSON APIs.
+- **Storage:** SQLite, with one active demo project.
+- **Extraction:** Rule-based candidate extraction works without an API key.
+- **Optional AI:** The server contains an OpenAI-compatible retrieval-and-generation path. When configured, it retrieves relevant source chunks, sends them with the request, and validates returned file and line citations. No model provider is configured in the public demo; this path is unverified there.
+- **Citations:** Source filename and line range stay attached to each handover item.
 
 ## Run locally
 
-Requires Python 3.10 or later. The demo uses only the Python standard library.
+Requires Python 3.10 or later. The local fallback uses only the Python standard library.
 
 ```powershell
 python server.py
 ```
 
-Open `http://localhost:8000`. Choose **Explore the demo** to load the sample Atlas pilot workspace, or **Create a handover** to upload your own `.txt`, `.md`, or `.csv` files. The included sample files contain synthetic project details.
+Open `http://localhost:8000`. Choose **Explore the demo** to load the sample workspace, or **Create a handover** to upload `.txt`, `.md`, or `.csv` project records. The SQLite database is created as `handover.db` beside the server. Set `HANDOVER_DB` to place it elsewhere. Use **Start over** in the app to clear the current workspace.
 
-The local SQLite database is created as `handover.db` beside the server. Set `HANDOVER_DB` to store it elsewhere. Use **Start over** in the app to clear the current workspace.
+## Hosting note
 
-## Publish a judge link
+The project is deployed as a Render free web service. Free web services can spin down after 15 minutes without incoming traffic, and their local filesystem is ephemeral. The app stores its demo state in SQLite, so data can reset after the service restarts. If the page is waking, allow a short delay and choose **Explore the demo** to reload the sample. See [Render free instance limits](https://render.com/docs/free) and [Render's first deploy guide](https://render.com/docs/your-first-deploy).
 
-The quickest no-cost route for this Python app is a Render web service connected to a GitHub repository. Create a GitHub account at [github.com/signup](https://github.com/signup), then make a **public** repository named `evidence-handover` so judges can open it. Upload only the files in this project folder; do not upload `.env` files, keys, or `handover.db`. GitHub's [new repository guide](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository) walks through the account and repository screens.
+## Optional AI configuration
 
-Render's current free web services sleep after 15 minutes without traffic, may take about a minute to wake, and lose local files when they sleep or restart. That means this demo's SQLite data is temporary on a free host; each judge should use **Explore the demo** to load the sample workspace. Render's official setup gives each web service a public `onrender.com` URL. See [Render's free plan limits](https://render.com/docs/free) and [first deploy guide](https://render.com/docs/your-first-deploy).
+The server reads `LLM_API_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` from server-side environment variables. The public demo does not have a key configured. Keep credentials in the hosting provider's secret settings; never commit them or put them in browser code. If no model settings are present or the request fails, the app uses its rule-based fallback and reports the fallback status.
 
-After the code is in GitHub:
+## Scope limits
 
-1. In Render, create a **Web Service** and connect the repository.
-2. Select **Python 3**. Use build command `pip install -r requirements.txt` and start command `python server.py`.
-3. Choose the **Free** plan. The server reads Render's `PORT` value and binds to `0.0.0.0`.
-4. Wait for the deploy to finish, open the generated URL, and click **Explore the demo**.
-
-The public repository should contain only synthetic sample data. Add `LLM_API_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` as Render environment variables only after your team has confirmed an AI provider. Never commit the key.
-
-## Demo journey
-
-1. Open the seeded sample workspace or upload project records.
-2. Build or review the draft items: decisions, tasks, risks, dependencies, and open questions.
-3. Open each citation to inspect the original file and line numbers. Edit, approve, or reject every item.
-4. Approve and share the handover, then open the incoming teammate view.
-
-For best results with the built-in demo extraction, start source lines with `DECISION:`, `TASK:`, `RISK:`, `DEPENDENCY:`, or `QUESTION:`. Other lines are included when their wording matches conservative task, decision, risk, dependency, or question patterns.
-
-## Optional AI extraction
-
-The app has a retrieval grounded LLM path for an OpenAI-compatible chat completions endpoint. If your team has no existing key, Google's current Gemini API docs show a free developer tier for selected models and an OpenAI-compatible endpoint. For a demo with synthetic data, the settings below are a starting point:
-
-```text
-LLM_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
-LLM_API_KEY=your-Gemini-API-key
-LLM_MODEL=gemini-3.5-flash-lite
-```
-
-Create the key in Google AI Studio and add it to the hosting provider's server-side environment settings. Never paste the key into this chat or put it in `app.js`, HTML, or a committed file. The provider's free tier is limited and may change. Google's docs say free-tier content may be used to improve its products, so use synthetic demo records only. See [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing) and [OpenAI-compatible setup](https://ai.google.dev/gemini-api/docs/openai/).
-
-When these settings are absent, the demo uses its transparent, rule-based evidence candidate extractor. If an AI request fails, it falls back to that extractor and shows a notice.
-
-The retrieval step ranks short source chunks by lexical overlap with handover topics, sends retrieved evidence to the configured model, and validates that each returned citation refers to a supplied source and line range. A human still reviews every result before sharing.
-
-## Current scope and limits
-
-- The upload flow accepts `.txt`, `.md`, and `.csv`; it does not parse PDF or office documents yet.
+- Uploads are limited to `.txt`, `.md`, and `.csv`; PDF and office document parsing are not implemented.
 - The app stores one active project in SQLite for this demo.
-- Reviewer and recipient are demonstration views in one browser. They are not real account authentication or server-enforced access controls.
-- The app is intended for synthetic or approved sample data. Do not use confidential organizational records in a public demo.
-- The demo does not connect to Slack, GitHub, Jira, or Google Workspace.
-- The built-in extractor is not an LLM and should not be presented as one. Only describe AI extraction as active when the endpoint is configured and a real request succeeds.
+- Reviewer and recipient are in-app views, not server-enforced roles or real account authentication.
+- There is no dedicated uncertainty or conflict detector; citations and human review are the safeguards in this prototype.
+- The demo has no live Slack, GitHub, Jira, or Google Workspace connectors.
+- The built-in extractor is rule-based. Do not describe AI extraction as active unless a provider has been configured and a real request succeeds.
+- Use synthetic or approved records on the public service.
 
-## Round 3 opportunities
+## Three substantial Round 3 improvements
 
-1. Add authenticated, read-only source connectors with incremental sync, starting with GitHub and one team discussion source.
-2. Add team accounts, role-enforced access, approval history, and an audit trail across projects.
-3. Add outcome tracking that measures onboarding time and unresolved work against a real baseline, then uses reviewer feedback to improve handover quality.
+1. Add authenticated, incremental source sync for GitHub and one team discussion source, with refresh and conflict handling.
+2. Add user accounts, server-enforced roles, reviewer assignment, approval history, and an audit trail across projects.
+3. Measure onboarding time and unresolved work against a baseline, then use reviewer corrections and recipient feedback to improve handover quality.
